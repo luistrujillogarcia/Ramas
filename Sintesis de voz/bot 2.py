@@ -4,30 +4,36 @@ import requests
 import pyttsx3
 from googletrans import Translator
 
-# Función para vocalizar texto
-def talk(text):
+# --- Configuración de voz ---
+def talk(text, voz_id=0):
     engine = pyttsx3.init()
-    engine.setProperty("rate", 140)   # velocidad natural
-    engine.setProperty("volume", 0.9) # volumen
+    engine.setProperty("rate", 140)
+    engine.setProperty("volume", 0.9)
     voices = engine.getProperty("voices")
-    engine.setProperty("voice", voices[0].id)  # 0 = masculino, 1 = femenino
+    engine.setProperty("voice", voices[voz_id].id)  # 0 = masculino, 1 = femenino
     engine.say(text)
     engine.runAndWait()
 
-# Función para traducir de inglés a español
-def traducir_a_es(texto_en_ingles):
-    traductor = Translator()
-    traduccion = traductor.translate(texto_en_ingles, src='en', dest='es')
-    return traduccion.text
+# --- Bot de Discord ---
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="$", intents=intents)
 
-# Función para obtener clima
+# Guardar voz actual (por defecto masculina)
+bot.voz_actual = 0
+
+# --- Comandos básicos ---
+@bot.command()
+async def hello(ctx):
+    await ctx.send("Hola, soy tu ingenioso asistente virtual, Llámame Norbot 🤖")
+    talk("Hola, soy tu ingenioso asistente virtual, Llámame Norbot", bot.voz_actual)
+
 def obtener_clima(ciudad: str) -> str:
     url = f"https://wttr.in/{ciudad}?format=%C+%t&lang=es"
     respuesta = requests.get(url)
 
     if respuesta.status_code == 200:
         clima = respuesta.text.strip()
-        # Comentarios divertidos según el clima
         if "lluvia" in clima.lower():
             clima += " ☔ No olvides tu paraguas."
         elif "soleado" in clima.lower():
@@ -40,51 +46,65 @@ def obtener_clima(ciudad: str) -> str:
     else:
         return "No se conectó a la API"
 
-# Función para obtener un hecho interesante
-def obtener_hecho_interesante() -> str:
-    url = "https://uselessfacts.jsph.pl/random.json?language=en"
-    try:
-        respuesta = requests.get(url)
-        if respuesta.status_code == 200:
-            data = respuesta.json()
-            hecho = data.get("text", "No encontré un hecho interesante.")
-            return hecho
-        else:
-            return "No pude obtener un hecho en este momento."
-    except Exception as e:
-        return f"Ocurrió un error: {e}"
-
-# Permisos y creación del bot
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="$", intents=intents)
-
-# Comando de saludo
 @bot.command()
-async def hello(ctx):
-    saludo = "Hola, soy tu ingenioso asistente virtual, Llámame Norbot"
-    await ctx.send(saludo)
-    talk(saludo)
-
-# Comando de clima + hecho curioso traducido
-@bot.command()
-async def clima(ctx, *, ciudad:str):
+async def clima(ctx, *, ciudad: str):
     prediccion = obtener_clima(ciudad)
     await ctx.send(f"El clima en {ciudad} es: {prediccion}")
-    talk(f"El clima en {ciudad} es: {prediccion}")
-    
-    hecho_ingles = obtener_hecho_interesante()
-    hecho_es = traducir_a_es(hecho_ingles)
-    await ctx.send(f"Y aquí tienes un hecho curioso: {hecho_es}")
-    talk(f"Y aquí tienes un hecho curioso: {hecho_es}")
+    talk(f"El clima en {ciudad} es: {prediccion}", bot.voz_actual)
 
-# Comando independiente para hecho curioso
+# --- Comando para cambiar la voz ---
 @bot.command()
-async def hecho(ctx):
-    hecho_ingles = obtener_hecho_interesante()
-    hecho_es = traducir_a_es(hecho_ingles)
-    await ctx.send(hecho_es)
-    talk(hecho_es)
+async def voz(ctx, tipo: str):
+    if tipo.lower() == "masculina":
+        bot.voz_actual = 0
+        await ctx.send("✅ Voz cambiada a masculina")
+    elif tipo.lower() == "femenina":
+        bot.voz_actual = 1
+        await ctx.send("✅ Voz cambiada a femenina")
+    else:
+        await ctx.send("Por favor, elige 'masculina' o 'femenina'.")
+
+# --- Obtener hechos ---
+def obtener_hecho():
+    url = "https://uselessfacts.jsph.pl/random.json?language=en"
+    respuesta = requests.get(url)
+    if respuesta.status_code == 200:
+        return respuesta.json().get("text")
+    else:
+        return "No pude obtener un hecho curioso ahora mismo."
+
+# --- Comandos de hechos curiosos por tema ---
+@bot.command()
+async def ciencia(ctx):
+    hecho = obtener_hecho()
+    traductor = Translator()
+    hecho_traducido = traductor.translate(hecho, src="en", dest="es").text
+    await ctx.send(f"🔬 Dato de ciencia: {hecho_traducido}")
+    talk(hecho_traducido, bot.voz_actual)
+
+@bot.command()
+async def historia(ctx):
+    hecho = obtener_hecho()
+    traductor = Translator()
+    hecho_traducido = traductor.translate(hecho, src="en", dest="es").text
+    await ctx.send(f"📜 Dato de historia: {hecho_traducido}")
+    talk(hecho_traducido, bot.voz_actual)
+
+@bot.command()
+async def espacio(ctx):
+    hecho = obtener_hecho()
+    traductor = Translator()
+    hecho_traducido = traductor.translate(hecho, src="en", dest="es").text
+    await ctx.send(f"🌌 Dato del espacio: {hecho_traducido}")
+    talk(hecho_traducido, bot.voz_actual)
+
+@bot.command()
+async def animales(ctx):
+    hecho = obtener_hecho()
+    traductor = Translator()
+    hecho_traducido = traductor.translate(hecho, src="en", dest="es").text
+    await ctx.send(f"🐾 Dato de animales: {hecho_traducido}")
+    talk(hecho_traducido, bot.voz_actual)
 
 # Ejecutar el bot
 bot.run("TOKEN")
